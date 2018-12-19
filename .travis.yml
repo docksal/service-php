@@ -1,0 +1,40 @@
+dist: xenial
+
+language: minimal
+
+env:
+  global:
+    - REPO=docksal/php
+    - LATEST_VERSION=7.1
+    - DOCKSAL_VERSION=develop
+  matrix:
+    - VERSION=7.1
+
+# Skip building master.
+# Stable image tags are pushed during release tag builds so that stable and release tags match on Docker Hub.
+branches:
+  except:
+  - master
+
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install libfcgi0ldbl  # cgi-fcgi binary used in tests
+
+install:
+  # Install Docksal to have a matching versions of Docker on the build host
+  - curl -fsSL https://get.docksal.io | DOCKSAL_VERSION=${DOCKSAL_VERSION} bash
+  - fin version
+  - fin sysinfo
+
+script:
+  # Build the base image
+  - cd ${TRAVIS_BUILD_DIR}/${VERSION}
+  - travis_retry make  # Retry builds, as pecl.php.net tends to time out often
+  - make test
+
+after_success:
+  - docker image ls
+  - ${TRAVIS_BUILD_DIR}/scripts/docker-push.sh
+
+after_failure:
+  - cd ${TRAVIS_BUILD_DIR}/${VERSION} && make logs

@@ -1,0 +1,3 @@
+VOLUMES = \
+	-v /home/docker \
+	-v $(CWD)/../tests:/var/www
