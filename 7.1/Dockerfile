@@ -34,9 +34,6 @@ RUN set -xe; \
 
 # Install additional packages
 RUN set -xe; \
-	# Create man direcotries, otherwise some packages may not install (e.g. postgresql-client)
-	# This should be a temporary workaround until fixed upstream: https://github.com/debuerreotype/debuerreotype/issues/10
-	for i in {1..8}; do mkdir -p "/usr/share/man/man$i"; done; \
 	apt-get update >/dev/null; \
 	apt-get install -y --no-install-recommends >/dev/null \
 		cron \
