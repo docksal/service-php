@@ -50,9 +50,9 @@ tag_and_push ()
 # ---------------------------- #
 
 # Possible docker image tags
-IMAGE_TAG_EDGE="edge-php${VERSION}"
-IMAGE_TAG_STABLE="php${VERSION}"
-IMAGE_TAG_RELEASE="${TRAVIS_TAG:1:3}-php${VERSION}"
+IMAGE_TAG_EDGE="${VERSION}-edge"
+IMAGE_TAG_STABLE="${VERSION}"
+IMAGE_TAG_RELEASE="${VERSION}-${TRAVIS_TAG:1:3}"
 IMAGE_TAG_LATEST="latest"
 
 # Skip pull request builds
