@@ -164,8 +164,8 @@ RUN set -xe; \
 		sqlsrv \
 	;\
 	\
-	# Use default PHP settings
-	cp -f "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"; \
+	# Use default PHP settings (production)
+	cp -f "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"; \
 	\
 	# Cleanup
 	docker-php-source delete; \
