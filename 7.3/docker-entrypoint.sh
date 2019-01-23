@@ -7,11 +7,13 @@ set -eo pipefail
 shopt -s nullglob
 
 HOME_DIR='/home/docker'
-DEBUG=${DEBUG:-0}
+
+# Enable debug messaging by default, unless explicitly disabled
+DEBUG=${DEBUG:-1}
 
 echo_debug ()
 {
-	if [[ "$DEBUG" != 0 ]]; then echo "$(date +"%F %H:%M:%S") | $@"; fi
+	if [[ "$DEBUG" != 0 ]]; then echo -e "$(date +"%F %H:%M:%S") | $@"; fi
 }
 
 # Sets docker user's uid/gid to the values passed via $HOST_UID and $HOST_GID environment variables
