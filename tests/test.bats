@@ -93,52 +93,44 @@ _healthcheck_wait ()
 	[[ $SKIP == 1 ]] && skip
 
 	### Setup ###
-	docker rm -vf "$NAME" >/dev/null 2>&1 || true
-	docker run --name "$NAME" -d \
-		-v /home/docker \
-		-v $(pwd)/../tests/docroot:/var/www/docroot \
-		"$IMAGE"
-	docker cp $(pwd)/../tests/scripts "$NAME:/var/www/"
+	make start
 
 	run _healthcheck_wait
 	unset output
 
 	### Tests ###
 
-	# Check PHP FPM and settings
-	run docker exec -u docker "$NAME" /var/www/scripts/test-php-fpm.sh index.php
+	# Check PHP-CLI settings defaults
+	php_cli_info=$(make exec -e CMD="php -r 'phpinfo(INFO_ALL);'")
+
+	output=$(echo "${php_cli_info}" | egrep "^PHP Version" | head -1)
+	[[ "${output}" =~ "${VERSION}" ]]
+	unset output
+
+	output=$(echo "${php_cli_info}" | egrep "^memory_limit")
+	[[ "${output}" ==  "memory_limit => 256M => 256M" ]]
+	unset output
+
+	output=$(echo "${php_cli_info}" | egrep "^sendmail_path")
+	[[ "${output}" == "sendmail_path => /bin/false => /bin/false" ]]
+	unset output
+
+	# Check PHP-FPM settings defaults
+	php_fpm_info=$(make exec -e CMD='/var/www/scripts/test-php-fpm.sh index.php')
 	# sed below is used to normalize the web output of phpinfo
 	# It will transforms "memory_limit                256M                                         256M" into
 	# "memory_limit => 256M => 256M", which is much easier to parse
-	output=$(echo "$output" | sed -E 's/[[:space:]]{2,}/ => /g')
-	echo "$output" | grep "memory_limit => 256M => 256M"
-	# sendmail_path, being long, gets printed on two lines. We grep the first line only
-	echo "$output" | grep "sendmail_path => /usr/bin/msmtp -t --host=mail -- /usr/bin/msmtp -t --host=mail --"
+	php_fpm_info=$(echo "${php_fpm_info}" | sed -E 's/[[:space:]]{2,}/ => /g')
+
+	output=$(echo "${php_fpm_info}" | egrep "^memory_limit")
+	[[ "${output}" == "memory_limit => 256M => 256M" ]]
+	unset output
+
 	# Cleanup output after each "run"
 	unset output
 
-	run docker exec -u docker "$NAME" /var/www/scripts/test-php-fpm.sh nonsense.php
-	echo "$output" | grep "Status: 404 Not Found"
-	unset output
-
-	# Check PHP CLI and settings
-	phpInfo=$(docker exec -u docker "$NAME" php -i)
-
-	output=$(echo "$phpInfo" | grep "PHP Version")
-	echo "$output" | grep "${VERSION}"
-	unset output
-
-	# Confirm WebP support enabled for GD
-	output=$(echo "$phpInfo" | grep "WebP Support")
-	echo "$output" | grep "enabled"
-	unset output
-
-	output=$(echo "$phpInfo" | grep "memory_limit")
-	echo "$output" | grep "memory_limit => 1024M => 1024M"
-	unset output
-
-	output=$(echo "$phpInfo" | grep "sendmail_path")
-	echo "$output" | grep "sendmail_path => /usr/bin/msmtp -t --host=mail --port=1025 => /usr/bin/msmtp -t --host=mail --port=1025"
+	run make exec -e CMD='/var/www/scripts/test-php-fpm.sh nonsense.php'
+	[[ "${output}" =~  "Status: 404 Not Found" ]]
 	unset output
 
 	# Check PHP modules
@@ -156,21 +148,92 @@ _healthcheck_wait ()
 	[[ $SKIP == 1 ]] && skip
 
 	### Setup ###
-	make start
+	DOCKSAL_ENVIRONMENT=php-settings \
+		make start
 
 	run _healthcheck_wait
 	unset output
 
 	### Tests ###
 
-	# Check PHP FPM settings overrides
-	run make exec -e CMD='/var/www/scripts/test-php-fpm.sh index.php'
-	echo "$output" | grep "memory_limit" | grep "512M"
+	# Check PHP-CLI settings overrides
+	php_cli_info=$(make exec -e CMD="php -r 'phpinfo(INFO_CONFIGURATION);'")
+
+	output=$(echo "${php_cli_info}" | egrep "^memory_limit")
+	echo "${output}" | grep "memory_limit => 1000M => 1000M"
 	unset output
 
-	# Check PHP CLI overrides
-	run make exec -e CMD='php -i'
-	echo "$output" | grep "memory_limit => 128M => 128M"
+	output=$(echo "${php_cli_info}" | egrep "^sendmail_path")
+	[[ "${output}" == "sendmail_path => /usr/bin/msmtp -t --host=example.com --port=25 => /usr/bin/msmtp -t --host=example.com --port=25" ]]
+	unset output
+
+	# Check PHP-FPM settings overrides
+	php_fpm_info=$(make exec -e CMD='/var/www/scripts/test-php-fpm.sh index.php')
+	# sed below is used to normalize the web output of phpinfo
+	# It will transforms "memory_limit                256M                                         256M" into
+	# "memory_limit => 256M => 256M", which is much easier to parse
+	php_fpm_info=$(echo "${php_fpm_info}" | sed -E 's/[[:space:]]{2,}/ => /g')
+
+	output=$(echo "${php_fpm_info}" | egrep "^memory_limit")
+	[[ "${output}" == "memory_limit => 500MB => 500MB" ]]
+	unset output
+
+	output=$(echo "${php_fpm_info}" | egrep "^max_execution_time")
+	[[ "${output}" == "max_execution_time => 500 => 500" ]]
+	unset output
+
+	output=$(echo "${php_fpm_info}" | egrep "^file_uploads")
+	[[ "${output}" == "file_uploads => Off => Off" ]]
+	unset output
+
+	### Cleanup ###
+	make clean
+}
+
+@test "Check cron" {
+	[[ $SKIP == 1 ]] && skip
+
+	### Setup ###
+	DOCKSAL_ENVIRONMENT=cron \
+	CMD='cron -f' \
+		make start
+
+	run _healthcheck_wait
+	unset output
+
+	### Tests ###
+	# Confirm output from cron is working
+
+	# Give cron 60s to invoke the scheduled test job
+	sleep 60
+	# Confirm cron has run and file contents has changed
+	run docker exec -u docker "$NAME" bash -lc 'cat /tmp/dummy.txt'
+	[[ "${output}" =~ "I run every minute" ]]
+	unset output
+
+	### Cleanup ###
+	make clean
+}
+
+@test "Check supercronic" {
+	[[ $SKIP == 1 ]] && skip
+
+	### Setup ###
+	DOCKSAL_ENVIRONMENT=cron \
+	CMD='supercronic /var/spool/cron/crontabs/docker' \
+		make start
+
+	run _healthcheck_wait
+	unset output
+
+	### Tests ###
+	# Confirm output from cron is working
+
+	# Give cron 60s to invoke the scheduled test job
+	sleep 60
+	# Confirm cron has run and file contents has changed
+	run docker exec -u docker "$NAME" bash -lc 'cat /tmp/dummy.txt'
+	[[ "${output}" =~ "I run every minute" ]]
 	unset output
 
 	### Cleanup ###
@@ -188,36 +251,6 @@ _healthcheck_wait ()
 #	run docker exec -u docker "${NAME}" cat /tmp/test-startup.txt
 #	[[ ${status} == 0 ]]
 #	[[ "${output}" =~ "I ran properly" ]]
-#	unset output
-#
-#	### Cleanup ###
-#	make clean
-#}
-
-#@test "Check cron" {
-#	[[ $SKIP == 1 ]] && skip
-#
-#	### Setup ###
-#	make start
-#
-#	run _healthcheck_wait
-#	unset output
-#
-#	### Tests ###
-#	# Confirm output from cron is working
-#
-#	# Create tmp date file and confirm it's empty
-#	docker exec -u docker "$NAME" bash -lc 'touch /tmp/date.txt'
-#	run docker exec -u docker "$NAME" bash -lc 'cat /tmp/date.txt'
-#	[[ "${output}" == "" ]]
-#	unset output
-#
-#	# Sleep for 60+1 seconds so cron can run again.
-#	sleep 61
-#
-#	# Confirm cron has ran and file contents has changed
-#	run docker exec -u docker "$NAME" bash -lc 'tail -1 /tmp/date.txt'
-#	[[ "${output}" =~ "The current date is " ]]
 #	unset output
 #
 #	### Cleanup ###

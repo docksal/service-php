@@ -1,3 +1,8 @@
 VOLUMES = \
 	-v /home/docker \
 	-v $(CWD)/../tests:/var/www
+
+ENV = \
+	-e PHP_SETTINGS \
+	-e PHP_FPM_SETTINGS \
+	-e CRONTAB \

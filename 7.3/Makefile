@@ -1,5 +1,5 @@
 -include ../tests/env_make
--include env_make
+-include ../tests/.docksal/docksal-$(DOCKSAL_ENVIRONMENT).env
 
 VERSION ?= 7.1
 REPO = docksal/php
@@ -24,10 +24,10 @@ push:
 	docker push $(REPO):$(TAG)
 
 run: clean
-	docker run --rm --name $(NAME) -it $(PORTS) $(VOLUMES) $(ENV) $(REPO):$(TAG)
+	docker run --rm --name $(NAME) -it $(PORTS) $(VOLUMES) $(ENV) $(REPO):$(TAG) $(CMD)
 
 start: clean
-	docker run -d --name $(NAME) $(PORTS) $(VOLUMES) $(ENV) $(REPO):$(TAG)
+	docker run -d --name $(NAME) $(PORTS) $(VOLUMES) $(ENV) $(REPO):$(TAG) $(CMD)
 
 # Non-interactive and non-tty docker exec (uses LF instead of CRLF line endings)
 exec:
