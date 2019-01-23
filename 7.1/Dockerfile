@@ -33,9 +33,11 @@ RUN set -xe; \
 	echo 'deb https://packages.microsoft.com/debian/9/prod stretch main' | tee /etc/apt/sources.list.d/mssql.list
 
 # Install additional packages
+ARG SUPERCRONIC_VERSION=0.1.6
 RUN set -xe; \
 	apt-get update >/dev/null; \
 	apt-get install -y --no-install-recommends >/dev/null \
+		busybox \
 		cron \
 		ghostscript \
 		# html2text binary - used for self-testing (php-fpm)
@@ -44,9 +46,14 @@ RUN set -xe; \
 		# cgi-fcgi binary - used for self-testing (php-fpm)
 		libfcgi-bin \
 		msmtp \
+		procps \
 		webp \
-	;\
-	rm -rf /var/lib/apt/lists/*
+	; \
+	rm -rf /var/lib/apt/lists/*; \
+	\
+	# Install supercronic - a docker/loggings friendly cron alternative
+	curl -fsSL https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VERSION}/supercronic-linux-amd64 -o /usr/local/bin/supercronic; \
+	chmod +x /usr/local/bin/supercronic
 
 # Create a regular user/group "docker" (uid = 1000, gid = 1000 )
 RUN set -xe; \
@@ -104,7 +111,7 @@ RUN set -xe; \
 		libxslt1.1 \
 		libzip4 \
 		msodbcsql17 \
-	;\
+	; \
 	# SSH2 must be installed from source for PHP 7.x
 	git clone https://github.com/php/pecl-networking-ssh2.git /usr/src/php/ext/ssh2 && rm -rf /usr/src/php/ext/ssh2/.git; \
 	\
@@ -142,7 +149,7 @@ RUN set -xe; \
 		ssh2 \
 		xsl \
 		zip \
-	;\
+	; \
 	pecl update-channels; \
 	pecl install >/dev/null </dev/null \
 		apcu \
@@ -153,7 +160,7 @@ RUN set -xe; \
 		pdo_sqlsrv \
 		redis \
 		sqlsrv \
-	;\
+	; \
 	docker-php-ext-enable \
 		apcu \
 		gnupg \
@@ -162,8 +169,7 @@ RUN set -xe; \
 		pdo_sqlsrv \
 		redis \
 		sqlsrv \
-	;\
-	\
+	; \
 	# Use default PHP settings (production)
 	cp -f "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"; \
 	\
