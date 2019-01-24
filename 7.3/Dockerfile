@@ -176,10 +176,8 @@ RUN set -xe; \
 	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $buildDeps >/dev/null; \
 	rm -rf /var/lib/apt/lists/*
 
-# PHP cli and fpm settings overrides
-COPY config/php/zz-php.ini /usr/local/etc/php/conf.d/zz-php.ini
-COPY config/php/zz-php-fpm.conf /usr/local/etc/php-fpm.d/zz-php-fpm.conf
-
+COPY config/php/zzz-10-php.ini /usr/local/etc/php/conf.d/zzz-10-php.ini
+COPY config/php/zzz-10-php-fpm.conf /usr/local/etc/php-fpm.d/zzz-10-php-fpm.conf
 COPY config/docker-entrypoint.d /etc/docker-entrypoint.d
 COPY config/docker-healthcheck.d /etc/docker-healthcheck.d
 COPY docker-entrypoint.sh /usr/local/bin/
