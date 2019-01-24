@@ -1,5 +1,5 @@
 -include ../tests/env_make
--include ../tests/.docksal/docksal-$(DOCKSAL_ENVIRONMENT).env
+-include $(INCLUDE)
 
 VERSION ?= 7.1
 REPO = docksal/php

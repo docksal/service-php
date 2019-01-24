@@ -116,20 +116,20 @@ _healthcheck_wait ()
 	unset output
 
 	# Check PHP-FPM settings defaults
-	php_fpm_info=$(make exec -e CMD='/var/www/scripts/test-php-fpm.sh index.php')
+	php_fpm_info=$(make exec -e CMD='/var/www/php-fpm.sh index.php')
 	# sed below is used to normalize the web output of phpinfo
 	# It will transforms "memory_limit                256M                                         256M" into
-	# "memory_limit => 256M => 256M", which is much easier to parse
-	php_fpm_info=$(echo "${php_fpm_info}" | sed -E 's/[[:space:]]{2,}/ => /g')
+	# "memory_limit | 256M | 256M", which is much easier to parse
+	php_fpm_info=$(echo "${php_fpm_info}" | sed -E 's/[[:space:]]{2,}/ | /g')
 
 	output=$(echo "${php_fpm_info}" | egrep "^memory_limit")
-	[[ "${output}" == "memory_limit => 256M => 256M" ]]
+	[[ "${output}" == "memory_limit | 256M | 256M" ]]
 	unset output
 
 	# Cleanup output after each "run"
 	unset output
 
-	run make exec -e CMD='/var/www/scripts/test-php-fpm.sh nonsense.php'
+	run make exec -e CMD='/var/www/php-fpm.sh nonsense.php'
 	[[ "${output}" =~  "Status: 404 Not Found" ]]
 	unset output
 
@@ -142,13 +142,11 @@ _healthcheck_wait ()
 	docker rm -vf "$NAME" >/dev/null 2>&1 || true
 }
 
-# Examples of using Makefile commands
-# make start, make exec, make clean
-@test "Configuration overrides" {
+@test "Configuration overrides (config files)" {
 	[[ $SKIP == 1 ]] && skip
 
 	### Setup ###
-	DOCKSAL_ENVIRONMENT=php-settings \
+	INCLUDE='../tests/settings-overrides-files/php-settings.env' \
 		make start
 
 	run _healthcheck_wait
@@ -160,7 +158,7 @@ _healthcheck_wait ()
 	php_cli_info=$(make exec -e CMD="php -r 'phpinfo(INFO_CONFIGURATION);'")
 
 	output=$(echo "${php_cli_info}" | egrep "^memory_limit")
-	echo "${output}" | grep "memory_limit => 1000M => 1000M"
+	echo "${output}" | grep "memory_limit => 1002M => 1002M"
 	unset output
 
 	output=$(echo "${php_cli_info}" | egrep "^sendmail_path")
@@ -168,22 +166,60 @@ _healthcheck_wait ()
 	unset output
 
 	# Check PHP-FPM settings overrides
-	php_fpm_info=$(make exec -e CMD='/var/www/scripts/test-php-fpm.sh index.php')
+	php_fpm_info=$(make exec -e CMD='/var/www/php-fpm.sh index.php')
 	# sed below is used to normalize the web output of phpinfo
 	# It will transforms "memory_limit                256M                                         256M" into
-	# "memory_limit => 256M => 256M", which is much easier to parse
-	php_fpm_info=$(echo "${php_fpm_info}" | sed -E 's/[[:space:]]{2,}/ => /g')
+	# "memory_limit | 256M | 256M", which is much easier to parse
+	php_fpm_info=$(echo "${php_fpm_info}" | sed -E 's/[[:space:]]{2,}/ | /g')
 
 	output=$(echo "${php_fpm_info}" | egrep "^memory_limit")
-	[[ "${output}" == "memory_limit => 500MB => 500MB" ]]
+	[[ "${output}" == "memory_limit | 502M | 502M" ]]
 	unset output
 
 	output=$(echo "${php_fpm_info}" | egrep "^max_execution_time")
-	[[ "${output}" == "max_execution_time => 500 => 500" ]]
+	[[ "${output}" == "max_execution_time | 502 | 502" ]]
 	unset output
 
-	output=$(echo "${php_fpm_info}" | egrep "^file_uploads")
-	[[ "${output}" == "file_uploads => Off => Off" ]]
+	### Cleanup ###
+	make clean
+}
+
+@test "Configuration overrides (environment variables)" {
+	[[ $SKIP == 1 ]] && skip
+
+	### Setup ###
+	INCLUDE='../tests/settings-overrides-variables/php-settings.env' \
+		make start
+
+	run _healthcheck_wait
+	unset output
+
+	### Tests ###
+
+	# Check PHP-CLI settings overrides
+	php_cli_info=$(make exec -e CMD="php -r 'phpinfo(INFO_CONFIGURATION);'")
+
+	output=$(echo "${php_cli_info}" | egrep "^memory_limit")
+	echo "${output}" | grep "memory_limit => 1003M => 1003M"
+	unset output
+
+	output=$(echo "${php_cli_info}" | egrep "^sendmail_path")
+	[[ "${output}" == "sendmail_path => /usr/bin/msmtp -t --host=example.com --port=25 => /usr/bin/msmtp -t --host=example.com --port=25" ]]
+	unset output
+
+	# Check PHP-FPM settings overrides
+	php_fpm_info=$(make exec -e CMD='/var/www/php-fpm.sh index.php')
+	# sed below is used to normalize the web output of phpinfo
+	# It will transforms "memory_limit                256M                                         256M" into
+	# "memory_limit | 256M | 256M", which is much easier to parse
+	php_fpm_info=$(echo "${php_fpm_info}" | sed -E 's/[[:space:]]{2,}/ | /g')
+
+	output=$(echo "${php_fpm_info}" | egrep "^memory_limit")
+	[[ "${output}" == "memory_limit | 503M | 503M" ]]
+	unset output
+
+	output=$(echo "${php_fpm_info}" | egrep "^max_execution_time")
+	[[ "${output}" == "max_execution_time | 503 | 503" ]]
 	unset output
 
 	### Cleanup ###
@@ -194,7 +230,7 @@ _healthcheck_wait ()
 	[[ $SKIP == 1 ]] && skip
 
 	### Setup ###
-	DOCKSAL_ENVIRONMENT=cron \
+	INCLUDE='../tests/settings-overrides-variables/crontab.env' \
 	CMD='cron -f' \
 		make start
 
@@ -219,8 +255,8 @@ _healthcheck_wait ()
 	[[ $SKIP == 1 ]] && skip
 
 	### Setup ###
-	DOCKSAL_ENVIRONMENT=cron \
-	CMD='supercronic /var/spool/cron/crontabs/docker' \
+	INCLUDE='../tests/settings-overrides-variables/crontab.env' \
+	CMD='cron -f' \
 		make start
 
 	run _healthcheck_wait

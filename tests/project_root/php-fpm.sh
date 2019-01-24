@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export SCRIPT_FILENAME="/var/www/docroot/${1}"
+export SCRIPT_FILENAME="/var/www/${1}"
 export REQUEST_URI=/
 export QUERY_STRING=
 export REQUEST_METHOD=GET
