@@ -94,11 +94,11 @@ RUN set -xe; \
 		libc-client2007e \
 		libfreetype6 \
 		libgpgme11 \
-		libicu57 \
 		libjpeg62-turbo \
 		libldap-2.4-2 \
-		libmagickcore-6.q16-3 \
-		libmagickwand-6.q16-3 \
+		libicu63 \
+		libmagickcore-6.q16-6 \
+		libmagickwand-6.q16-6 \
 		libmemcached11 \
 		libmemcachedutil2 \
 		libmhash2 \
